@@ -17,42 +17,9 @@ class ObmEnv(gym.Env):
         super(ObmEnv, self).__init__()
         self.board = board
 
-    def _get_image(self):
-        out = BytesIO()
-        bytestring = chess.svg.board(self.board, size = self.render_size).encode('utf-8')
-        cairosvg.svg2png(bytestring = bytestring, write_to = out)
-        image = Image.open(out)
-        return np.asarray(image)
-
-    @staticmethod
-    def get_piece_configuration(board):
-        piece_map = np.zeros(64)
-
-        for square, piece in zip(board.piece_map().keys(), board.piece_map().values()):
-            piece_map[square] = piece.piece_type * (piece.color * 2 - 1)
-
-        return piece_map.reshape((8, 8))
-
     def _observe(self):
         observation = (self._get_image() if self.observation_mode == 'rgb_array' else self.get_piece_configuration(self.board))
         return observation
-
-    @staticmethod
-    def _action_to_move(action):
-        from_square = chess.Square(action[0])
-        to_square = chess.Square(action[1])
-        promotion = (None if action[2] == 0 else chess.Piece(chess.PieceType(action[2])), chess.Color(action[4]))
-        drop = (None if action[3] == 0 else chess.Piece(chess.PieceType(action[3])), chess.Color(action[5]))
-        move = chess.Move(from_square, to_square, promotion, drop)
-        return move
-    
-    @staticmethod
-    def _move_to_action(move):
-        from_square = move.from_square
-        to_square = move.to_square
-        promotion = (0 if move.promotion is None else move.promotion)
-        drop = (0 if move.drop is None else move.drop)
-        return [from_square, to_square, promotion, drop]
 
     def step(self, action):
         self.board.push(action)
