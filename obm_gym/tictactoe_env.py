@@ -6,11 +6,9 @@ from abc import ABC, abstractmethod, abstractproperty
 
 class TicTacToeActionSpace(ABC):
 
-    @abstractmethod
     def sample(self):
         pass
 
-    @abstractproperty
     def legal_actions(self):
         """
         Returns:
@@ -22,7 +20,6 @@ class TicTacToeActionSpace(ABC):
 class TicTacToeEnv(gym.Env):
     """Abstract TicTacToe Environment"""
     
-    @abstractproperty
     def current_player(self):
         """
         Returns:
@@ -30,7 +27,6 @@ class TicTacToeEnv(gym.Env):
         """
         pass
 
-    @abstractproperty
     def previous_player(self):
         """
         Returns:
@@ -38,7 +34,6 @@ class TicTacToeEnv(gym.Env):
         """
         pass
 
-    @abstractmethod
     def get_string_representation(self):
         """
         Returns:
@@ -46,7 +41,6 @@ class TicTacToeEnv(gym.Env):
         """
         pass
     
-    @abstractmethod
     def set_string_representation(self, board_string):
         """
         Input:
@@ -54,7 +48,6 @@ class TicTacToeEnv(gym.Env):
         """
         pass
 
-    @abstractmethod
     def get_canonical_observaion(self):
         """
         Returns:
@@ -67,7 +60,6 @@ class TicTacToeEnv(gym.Env):
         """
         pass  
 
-    @abstractmethod
     def game_result(self):
         """
         Returns:
@@ -77,18 +69,14 @@ class TicTacToeEnv(gym.Env):
         """
         pass
 
-    @abstractmethod
     def step(self, action):
         pass
 
-    @abstractmethod
     def reset(self):
         pass
 
-    @abstractmethod
     def render(self, mode='human'):
         pass
 
-    @abstractmethod
     def close(self):
         pass
