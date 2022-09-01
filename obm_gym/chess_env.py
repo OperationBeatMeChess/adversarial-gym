@@ -35,14 +35,16 @@ class ChessEnv(adversarial.AdversarialEnv):
         self.board = chess.Board(chess960=False)
 
         self.action_space = ChessActionSpace(self.board)
-        self.observation_space = spaces.Box(low=-6, high=6,
-                                            shape=(8, 8),
-                                            dtype=np.uint8)
+        self.observation_space = spaces.Tuple(spaces=(
+            spaces.Box(low=-6, high=6, shape=(8, 8), dtype=np.int8),
+            spaces.Box(low=np.array([False]),
+                       high=np.array([True]), dtype=bool)
+        ))
 
         self.render_size = render_size
         self.claim_draw = claim_draw
         self.viewer = None
-    
+
     @property
     def current_player(self):
         return self.board.turn
@@ -53,7 +55,7 @@ class ChessEnv(adversarial.AdversarialEnv):
 
     def get_string_representation(self):
         return self.board.fen()
-    
+
     def set_string_representation(self, board_string):
         self.board = chess.Board(board_string)
         self.action_space = ChessActionSpace(self.board)
@@ -62,31 +64,48 @@ class ChessEnv(adversarial.AdversarialEnv):
         state = (self.get_piece_configuration(self.board))
         player = self.current_player
 
-        canonical_state = state[::-1,::-1] if player == chess.BLACK else state
-
-        return (-1)**player * canonical_state
+        canonical_representation = - \
+            state[::-1, ::-1] if player == chess.BLACK else state
+        canonical_state = (canonical_representation, np.array([player]))
+        return canonical_state
 
     def game_result(self):
         result = self.board.result()
         return (chess.WHITE if result == '1-0' else chess.BLACK if result ==
-                  '0-1' else -1 if result == '1/2-1/2' else None)
+                '0-1' else -1 if result == '1/2-1/2' else None)
+
+    def set_board_state(self, canonicial_state):
+        canonicial_representation, player = canonicial_state
+        state = -canonicial_representation[::-1, ::-
+                                           1] if player == chess.BLACK else canonicial_representation
+
+        piece_map = {}
+
+        for square, piece in enumerate(state.flatten()):
+            if piece:
+                color = chess.Color(int(np.sign(piece) > 0))
+                piece_map[chess.Square(square)] = chess.Piece(
+                    chess.PieceType(abs(piece)), color)
+
+        self.board.set_piece_map(piece_map)
 
     def step(self, action):
         move = self._action_to_move(action)
         self.board.push(move)
 
         observation = self.get_canonical_observaion()
-        player = self.current_player
+
         result = self.game_result()
-        # Reward is 1 for white win or -1 for black win
-        reward = 0 if result is None else 1
+        # result is 1 for white win or 0 for black win. slight positive for draw
+        reward = 0 if result is None else 1e-4 if result == -1 else 1
         done = result is not None
-        info = {'player': player,
-                'castling_rights': self.board.castling_rights,
-                'fullmove_number': self.board.fullmove_number,
-                'halfmove_clock': self.board.halfmove_clock,
-                'promoted': self.board.promoted,
-                'ep_square': self.board.ep_square}
+        info = {
+            'castling_rights': self.board.castling_rights,
+            'fullmove_number': self.board.fullmove_number,
+            'halfmove_clock': self.board.halfmove_clock,
+            'promoted': self.board.promoted,
+            'ep_square': self.board.ep_square
+        }
 
         return observation, reward, done, info
 
@@ -119,8 +138,8 @@ class ChessEnv(adversarial.AdversarialEnv):
     def get_piece_configuration(board):
         piece_map = np.zeros(64, dtype=np.int8)
 
-        for square, piece in zip(board.piece_map().keys(), board.piece_map().values()):
-            piece_map[square] = piece.piece_type * ((-1)**piece.color)
+        for square, piece in board.piece_map().items():
+            piece_map[square] = piece.piece_type * (2 * piece.color - 1)
 
         return piece_map.reshape((8, 8))
 
