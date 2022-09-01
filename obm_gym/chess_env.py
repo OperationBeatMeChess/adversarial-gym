@@ -156,4 +156,4 @@ class ChessEnv(adversarial.AdversarialEnv):
         from_square = move.from_square
         to_square = move.to_square
         promotion = (0 if move.promotion is None else move.promotion)
-        return np.array([from_square, to_square, promotion])
+        return (from_square, to_square, promotion)
