@@ -3,17 +3,18 @@ from gym import spaces
 
 import numpy as np
 from abc import ABC, abstractmethod, abstractproperty
+import pickle
 
 class TicTacToeActionSpace(ABC):
 
-    def __init__(self, board, size=3):
-        self.size = size
-        self.board = board
+    def __init__(self, env):
+        self.env = env
 
     def sample(self):
-        actions = self.legal_actions()
+        actions = self.legal_actions
         return actions[np.random.randint(len(actions))]
-
+        
+    @property
     def legal_actions(self):
         """
         Returns:
@@ -22,10 +23,10 @@ class TicTacToeActionSpace(ABC):
         actions = []
 
         # Get all the empty squares (color == 0)
-        for y in range(self.size):
-            for x in range(self.size):
-                if self.board[x][y]==0:
-                    actions.extend((x,y))
+        for x in range(self.env.size):
+            for y in range(self.env.size):
+                if self.env.board[x][y] == 0:
+                    actions.append((x,y))
         return actions
 
   
@@ -40,10 +41,9 @@ class TicTacToeEnv(gym.Env):
         self.draw = 0
         
         self.size = size
-        self.board = np.full((self.size, self.size), None)
-        self._current_player = self.player_X
+        self.reset()
 
-        self.action_space = TicTacToeActionSpace(self.board, size=self.size)
+        self.action_space = TicTacToeActionSpace(self)
         self.observation_space = spaces.Tuple(spaces=(
             spaces.Box(low=-1, high=1, shape=(self.size, self.size), dtype=np.int8),
             spaces.Box(low=np.array([False]),
@@ -71,15 +71,22 @@ class TicTacToeEnv(gym.Env):
         Returns:
             boardString: Returns string representation of current game state.
         """
-        return self.board.tostring()+""
+        # return self.board.tobytes().hex() + f"#{self.size}"
+        return pickle.dumps([self.board, self._current_player, self.size])
     
     def set_string_representation(self, board_string):
         """
         Input:
             boardString: sets game state to match the string representation of board_string.
         """
-        self.board = np.fromstring(board_string, dtype=self.board.dtype).reshape(x.shape)
-        self.action_space = TicTacToeActionSpace(self.board, size=self.size)
+        # board, size = board_string.split('#')
+        # self.size = int(size)
+        # self.board = np.frombuffer(bytes.fromhex(board), dtype=self.board.dtype).reshape((self.size, self.size))
+        # player = np.sum(self.board)
+        # self._current_player = self.player_X if player==0 else self.player_O
+        # self.board.setflags(write=True)
+        # self.action_space = TicTacToeActionSpace(self)
+        self.board, self._current_player, self.size = pickle.loads(board_string)
 
     def get_canonical_observaion(self):
         """
@@ -100,42 +107,41 @@ class TicTacToeEnv(gym.Env):
                     for the winning player or draw.
                
         """
-
-        # check that the game is complete. If not return None
-        if None in self.board:
-            return None
-        
         for row in self.board:
-            if row.every((v, i, a) => v === a[0]):
+            if (row == row[0]).all() and row[0] != 0:
                 return row[0]
 
         for column in self.board.T:
-            if column.every((v, i, a) => v === a[0]):
+            if  (column == column[0]).all() and column[0] != 0:
                 return column[0]
 
-        for diagonal in [np.diag(a), np.diag(a[:, ::-1])]:
-            if diagonal.every((v, i, a) => v === a[0]):
+        for diagonal in [np.diag(self.board), np.diag(self.board[:, ::-1])]:
+            if (diagonal == diagonal[0]).all() and diagonal[0] != 0:
                 return diagonal[0]
+
+        # check that the game is complete. If not return None
+        if 0 in self.board:
+            return None
+        
 
         return self.draw
 
     def step(self, action):
-        (x,y) = move
-
         # Add the piece to the empty square.
-        assert self.board[action] is None
+        assert self.board[action] == 0
         self.board[action] = self.current_player
-        self._current_player = -self._current_player
+        self._current_player = -self.current_player
 
         observation = self.get_canonical_observaion()
-        reward = 0 if self.game_result() is None else 1
+        result = self.game_result()
+        reward = 0 if result is None else 1e-4 if result == 0 else 1
         done = result is not None
         info = {}
 
         return observation, reward, done, info
 
     def reset(self):
-        self.board = np.full((self.size, self.size), None)
+        self.board = np.zeros((self.size, self.size), dtype=np.int8)
         self._current_player = self.player_X
         return self.get_canonical_observaion()
 
@@ -151,11 +157,11 @@ class TicTacToeEnv(gym.Env):
                 print ("-", end="-")
             print("--")
             for x in range(self.size):
-                print(y, "|",end="")    # print the row #
+                print(x, "|",end="")    # print the row #
                 for y in range(self.size):
                     piece = self.board[x, y]    # get the piece to print
-                    if piece == -1: print("X ",end="")
-                    elif piece == 1: print("O ",end="")
+                    if piece == self.player_X: print("X ",end="")
+                    elif piece == self.player_O: print("O ",end="")
                     else:
                         if y==self.size:
                             print("-",end="")
