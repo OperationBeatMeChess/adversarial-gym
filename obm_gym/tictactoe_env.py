@@ -23,11 +23,18 @@ class TicTacToeActionSpace(ABC):
         actions = []
 
         # Get all the empty squares (color == 0)
-        for x in range(self.env.size):
-            for y in range(self.env.size):
+        s = self.env.size
+        for x in range(s):
+            for y in range(s):
                 if self.env.board[x][y] == 0:
-                    actions.append((x,y))
+                    raveled_ind = np.ravel_multi_index((x,y), (s, s))
+                    actions.append(raveled_ind)
         return actions
+    
+    @property
+    def action_space_size(self):
+        s = self.env.size
+        return s * s
 
   
 class TicTacToeEnv(gym.Env):
@@ -127,9 +134,11 @@ class TicTacToeEnv(gym.Env):
         return self.draw
 
     def step(self, action):
+        s = self.size
+        unraveled_action = np.unravel_index(action, (s, s))
         # Add the piece to the empty square.
-        assert self.board[action] == 0
-        self.board[action] = self.current_player
+        assert self.board[unraveled_action] == 0
+        self.board[unraveled_action] = self.current_player
         self._current_player = -self.current_player
 
         observation = self.get_canonical_observaion()

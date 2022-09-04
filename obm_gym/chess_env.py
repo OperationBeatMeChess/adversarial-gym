@@ -19,11 +19,15 @@ class ChessActionSpace(adversarial.AdversarialActionSpace):
     def sample(self):
         moves = list(self.board.legal_moves)
         move = np.random.choice(moves)
-        return ChessEnv._move_to_action(move)
+        return ChessEnv.move_to_action(move)
 
     @property
     def legal_actions(self):
-        return [ChessEnv._move_to_action(move) for move in self.board.legal_moves]
+        return [ChessEnv.move_to_action(move) for move in self.board.legal_moves]
+    
+    @property
+    def action_space_size(self):
+        return 64 * 73
 
 
 class ChessEnv(adversarial.AdversarialEnv):
@@ -90,7 +94,7 @@ class ChessEnv(adversarial.AdversarialEnv):
         self.board.set_piece_map(piece_map)
 
     def step(self, action):
-        move = self._action_to_move(action)
+        move = self.action_to_move(action)
         self.board.push(move)
 
         observation = self.get_canonical_observaion()
@@ -134,6 +138,47 @@ class ChessEnv(adversarial.AdversarialEnv):
         if not self.viewer is None:
             self.viewer.close()
 
+
+    def action_to_move(self, action):
+        unraveled_action = np.unravel_index(action, (64, 73))
+        from_square = unraveled_action[0]
+
+        if unraveled_action[1] < 64:
+            to_square = unraveled_action[1]
+            move = self.board.find_move(from_square, to_square)
+        else:
+            pd = unraveled_action[1] - 64
+            unraveled_pd = np.unravel_index(pd, (3, 3))
+            promotion = unraveled_pd[0] + 2
+
+            from_file = chess.square_file(from_square)
+            to_file = unraveled_pd[1] - 1 + from_file
+            from_rank = chess.square_rank(from_square)
+            to_rank = 0 if 1 == from_rank else 7
+            to_square = chess.square(to_file, to_rank)
+            move = self.board.find_move(from_square, to_square, promotion=promotion)
+        return move
+
+    @staticmethod
+    def move_to_action(move):
+        from_square = move.from_square
+        to_square = move.to_square
+        promotion = (0 if move.promotion is None else move.promotion)
+
+        from_file = chess.square_file(from_square)
+        to_file   = chess.square_file(to_square)
+
+        if promotion == 0 or promotion == chess.QUEEN:
+            action = (from_square, to_square)
+            return np.ravel_multi_index(action, (64, 73))
+        else:
+            d = to_file - from_file + 1 # in {0, 1, 2}
+            p = promotion - 2 # in {0, 1, 2}
+            pd = np.ravel_multi_index((p, d), (3, 3))
+            action = (from_square, 64 + pd) 
+            return np.ravel_multi_index(action, (64, 73))
+
+
     @staticmethod
     def get_piece_configuration(board):
         piece_map = np.zeros(64, dtype=np.int8)
@@ -142,18 +187,3 @@ class ChessEnv(adversarial.AdversarialEnv):
             piece_map[square] = piece.piece_type * (2 * piece.color - 1)
 
         return piece_map.reshape((8, 8))
-
-    @staticmethod
-    def _action_to_move(action):
-        from_square = chess.Square(action[0])
-        to_square = chess.Square(action[1])
-        promotion = (None if action[2] == 0 else chess.PieceType(action[2]))
-        move = chess.Move(from_square, to_square, promotion)
-        return move
-
-    @staticmethod
-    def _move_to_action(move):
-        from_square = move.from_square
-        to_square = move.to_square
-        promotion = (0 if move.promotion is None else move.promotion)
-        return (from_square, to_square, promotion)

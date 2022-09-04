@@ -10,6 +10,11 @@ class AdversarialActionSpace(ABC):
     def sample(self):
         pass
 
+    def contains(self, action, is_legal=True):
+        is_contained = action in range(self.action_space_size())
+        and_legal = action in self.legal_actions if is_legal else True
+        return is_contained and and_legal
+
     @abstractproperty
     def legal_actions(self):
         """
@@ -17,6 +22,15 @@ class AdversarialActionSpace(ABC):
             legal_actions: Returns a list of all the legal moves in the current position.
         """
         pass
+    
+    @abstractproperty
+    def action_space_size(self):
+        """
+        Returns:
+            action_space_size: returns the number of all possible actions.
+        """
+        pass
+    
 
   
 class AdversarialEnv(gym.Env):
