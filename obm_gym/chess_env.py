@@ -178,7 +178,6 @@ class ChessEnv(adversarial.AdversarialEnv):
             action = (from_square, 64 + pd) 
             return np.ravel_multi_index(action, (64, 73))
 
-
     @staticmethod
     def get_piece_configuration(board):
         piece_map = np.zeros(64, dtype=np.int8)
