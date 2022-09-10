@@ -73,6 +73,10 @@ class TicTacToeEnv(gym.Env):
         """
         return -self.current_player
 
+    @property
+    def starting_player(self):
+        return self.player_X
+
     def get_string_representation(self):
         """
         Returns:

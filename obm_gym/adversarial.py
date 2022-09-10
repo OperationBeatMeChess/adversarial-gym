@@ -52,6 +52,14 @@ class AdversarialEnv(gym.Env):
         """
         pass
 
+    @abstractproperty
+    def starting_player(self):
+        """
+        Returns:
+            starting_player: Returns identifyier for which player started the game.
+        """
+        pass
+
     @abstractmethod
     def get_string_representation(self):
         """
