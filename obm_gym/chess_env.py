@@ -34,7 +34,7 @@ class ChessEnv(adversarial.AdversarialEnv):
     """Chess Environment"""
     metadata = {'render.modes': ['rgb_array', 'human']}
 
-    def __init__(self, render_size=512, observation_mode='piece_map', claim_draw=True, **kwargs):
+    def __init__(self, render_size=512, claim_draw=True, **kwargs):
         super(ChessEnv, self).__init__()
         self.board = chess.Board(chess960=False)
 
@@ -57,6 +57,10 @@ class ChessEnv(adversarial.AdversarialEnv):
     def previous_player(self):
         return not self.board.turn
 
+    @property
+    def starting_player(self):
+        return chess.WHITE
+
     def get_string_representation(self):
         return self.board.fen()
 
@@ -68,8 +72,10 @@ class ChessEnv(adversarial.AdversarialEnv):
         state = (self.get_piece_configuration(self.board))
         player = self.current_player
 
-        canonical_representation = - \
-            state[::-1, ::-1] if player == chess.BLACK else state
+        # canonical_representation = - \
+        #     state[::-1, ::-1] if player == chess.BLACK else state
+
+        canonical_representation = -state if player == chess.BLACK else state
         canonical_state = (canonical_representation, np.array([player]))
         return canonical_state
 
