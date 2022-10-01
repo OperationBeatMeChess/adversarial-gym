@@ -12,7 +12,7 @@ Depending on the use case you can install in developer mode or using pypi.
 
 ### Use the package manager [pip](https://pip.pypa.io/en/stable/) to install adversarial_gym
 ```bash
-pip install adversarial_gym
+pip install adversarial-gym
 ```
 
 ### Install from Source

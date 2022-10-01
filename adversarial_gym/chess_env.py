@@ -67,6 +67,7 @@ class ChessEnv(adversarial.AdversarialEnv):
     def set_string_representation(self, board_string):
         self.board = chess.Board(board_string)
         self.action_space = ChessActionSpace(self.board)
+        return self._get_canonical_observation()
 
     def _get_canonical_observation(self):
         state = (self.get_piece_configuration(self.board))
@@ -76,8 +77,7 @@ class ChessEnv(adversarial.AdversarialEnv):
         #     state[::-1, ::-1] if player == chess.BLACK else state
 
         canonical_representation = -state if player == chess.BLACK else state
-        canonical_state = canonical_representation, np.array([player], dtype=np.bool)
-        return canonical_state
+        return canonical_representation, np.array([player], dtype=np.bool)
 
     def _get_info(self):
         info = {

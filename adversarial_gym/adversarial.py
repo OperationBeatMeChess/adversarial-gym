@@ -76,6 +76,15 @@ class AdversarialEnv(gym.Env):
         """
         Input:
             board_string: sets game state to match the string representation of board_string.
+        Returns:
+            canonical_state: returns canonical form of board. The canonical form
+                            should be independent of players turn. For e.g. in chess,
+                            the canonical form can be chosen to be from the pov
+                            of white. When the player is white, we can return
+                            board as is. When the player is black, we can invert
+                            the colors and return the board.
+            current_player: returns indentifier of which player is the current player in the canonicial state. 
+                            This is used to decode the invariant canonical form.
         """
         pass
 

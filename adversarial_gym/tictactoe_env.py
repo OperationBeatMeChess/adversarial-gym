@@ -104,6 +104,7 @@ class TicTacToeEnv(adversarial.AdversarialEnv):
         # self.board.setflags(write=True)
         # self.action_space = TicTacToeActionSpace(self)
         self.board, self._current_player, self.size = pickle.loads(board_string)
+        return self._get_canonical_observation()
 
     def _get_canonical_observation(self):
         """
