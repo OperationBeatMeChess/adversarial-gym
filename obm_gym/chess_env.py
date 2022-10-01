@@ -73,7 +73,7 @@ class ChessEnv(adversarial.AdversarialEnv):
         self.board = chess.Board(board_string)
         self.action_space = ChessActionSpace(self.board)
 
-    def _get_canonical_observaion(self):
+    def _get_canonical_observation(self):
         state = (self.get_piece_configuration(self.board))
         player = self.current_player
 
@@ -118,7 +118,7 @@ class ChessEnv(adversarial.AdversarialEnv):
         move = self.action_to_move(action)
         self.board.push(move)
 
-        observation = self._get_canonical_observaion()
+        observation = self._get_canonical_observation()
         info = self._get_info()
 
         result = self.game_result()
@@ -135,7 +135,7 @@ class ChessEnv(adversarial.AdversarialEnv):
         super().reset(seed=seed)
         self.board.reset()
 
-        observation = self._get_canonical_observaion()
+        observation = self._get_canonical_observation()
         info = self._get_info()
 
         if self.render_mode == "human":
