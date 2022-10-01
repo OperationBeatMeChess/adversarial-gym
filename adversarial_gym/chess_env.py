@@ -106,6 +106,7 @@ class ChessEnv(adversarial.AdversarialEnv):
 
     def _get_frame(self):
         surf = pygame.surfarray.make_surface(self._get_img())
+        surf = pygame.transform.flip(surf, False, True)
         return pygame.transform.rotate(surf, -90)
 
     def _get_img(self):
