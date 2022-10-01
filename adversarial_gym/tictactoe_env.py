@@ -11,10 +11,6 @@ class TicTacToeActionSpace(adversarial.AdversarialActionSpace):
 
     def __init__(self, env):
         self.env = env
-
-    def sample(self):
-        actions = self.legal_actions
-        return actions[np.random.randint(len(actions))]
         
     @property
     def legal_actions(self):
@@ -39,7 +35,7 @@ class TicTacToeActionSpace(adversarial.AdversarialActionSpace):
         return s * s
 
   
-class TicTacToeEnv(gym.Env):
+class TicTacToeEnv(adversarial.AdversarialEnv):
     """Abstract TicTacToe Environment"""
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
@@ -109,7 +105,7 @@ class TicTacToeEnv(gym.Env):
         # self.action_space = TicTacToeActionSpace(self)
         self.board, self._current_player, self.size = pickle.loads(board_string)
 
-    def _get_canonical_observaion(self):
+    def _get_canonical_observation(self):
         """
         Returns:
             canonicalState: returns canonical form of board. The canonical form
@@ -124,87 +120,51 @@ class TicTacToeEnv(gym.Env):
     def _get_info(self):
         return {}
 
-    def game_result(self):
+    def _game_result(self):
         """
         Returns:
             winner: returns None when game is not finished else returns int value 
                     for the winning player or draw.
                
         """
+
         for row in self.board:
             if (row == row[0]).all() and row[0] != 0:
-                return row[0]
+                result = row[0]
+                reward = 1
+                return result, reward
 
         for column in self.board.T:
             if  (column == column[0]).all() and column[0] != 0:
-                return column[0]
+                result = column[0]
+                reward = 1
+                return result, reward
 
         for diagonal in [np.diag(self.board), np.diag(self.board[:, ::-1])]:
             if (diagonal == diagonal[0]).all() and diagonal[0] != 0:
-                return diagonal[0]
+                result = diagonal[0]
+                reward = 1
+                return result, reward
 
         # check that the game is complete. If not return None
         if 0 in self.board:
-            return None
+            return None, 0
         
+        return self.draw, 1e-4
 
-        return self.draw
-
-    def step(self, action):
+    def _do_action(self, action):
         s = self.size
         unraveled_action = np.unravel_index(action, (s, s))
         # Add the piece to the empty square.
         assert self.board[unraveled_action] == 0
         self.board[unraveled_action] = self.current_player
-        self._current_player = -self.current_player
-
-        observation = self._get_canonical_observaion()
-        info = self._get_info()
-
-        result = self.game_result()
-        reward = 0 if result is None else 1e-4 if result == 0 else 1
-        terminated = result is not None
-
-        if self.render_mode == "human":
-            self.render()
-
-        return observation, reward, terminated, False, info
-
-    def reset(self, seed=None, options=None):
-        super().reset(seed=seed)
+        self._current_player = self.previous_player
+    
+    def _reset_game(self):
         self.board = np.zeros((self.size, self.size), dtype=np.int8)
         self._current_player = self.player_X
 
-        observation = self._get_canonical_observaion()
-        info = self._get_info()
-
-        if self.render_mode == "human":
-            self.render()
-        
-        return observation, info
-        
-    def render(self):
-        if self.render_mode == "human":
-            
-            if self.clock is None:
-                self.clock = pygame.time.Clock()
-            if self.window is None:
-                pygame.init()
-                pygame.display.init()
-                self.window = pygame.display.set_mode((self.render_size, self.render_size))
-
-            canvas = self._render_frame()
-            # The following line copies our drawings from `canvas` to the visible window
-            self.window.blit(canvas, canvas.get_rect())
-            pygame.display.update()
-            # We need to ensure that human-rendering occurs at the predefined framerate.
-            # The following line will automatically add a delay to keep the framerate stable.
-            self.clock.tick(self.metadata["render_fps"])
-
-        elif self.render_mode == "rgb_array":
-            return self._get_frame()
-
-    def _render_frame(self):
+    def _get_frame(self):
 
         canvas = pygame.Surface((self.render_size, self.render_size))
         BG = (210, 180, 140)
@@ -266,8 +226,8 @@ class TicTacToeEnv(gym.Env):
 
         return canvas
 
-    def _get_frame(self):
-        canvas = self._render_frame()
+    def _get_img(self):
+        canvas = self._get_frame()
         return np.transpose(
                 np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
             ) 

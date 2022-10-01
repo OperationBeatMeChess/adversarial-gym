@@ -12,7 +12,7 @@ setup(name='adversarial_gym',
       author='Dawson Horvath',
       author_email='horvath.dawson@gmail.com',
       license='MIT License',
-      install_requires=['gym', 'python-chess', 'numpy', 'cairosvg', 'pillow'],
+      install_requires=['gym>=0.26.1', 'python-chess', 'numpy', 'cairosvg', 'pillow', 'pygame'],
       long_description=long_description,
       long_description_content_type="text/markdown",
 )
