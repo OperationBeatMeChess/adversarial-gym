@@ -1,5 +1,5 @@
 import gym
-import obm_gym
+import adversarial_gym
 import time
 import chess
 

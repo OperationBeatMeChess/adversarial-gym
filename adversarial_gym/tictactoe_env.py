@@ -215,20 +215,21 @@ class TicTacToeEnv(gym.Env):
         pix_square_size = (
             self.render_size / self.size
         )  # The size of a single grid square in pixels
+        LW = int(pix_square_size / 15)
         for x in range(self.size + 1):
             pygame.draw.line(
                 canvas,
                 LI,
                 (0, pix_square_size * x),
                 (self.render_size, pix_square_size * x),
-                width=3,
+                width=LW,
             )
             pygame.draw.line(
                 canvas,
                 LI,
                 (pix_square_size * x, 0),
                 (pix_square_size * x, self.render_size),
-                width=3,
+                width=LW,
             )
         for x in range(self.size):
             for y in range(self.size):
@@ -240,27 +241,27 @@ class TicTacToeEnv(gym.Env):
                         CR, 
                         tuple(np.add(center,(pix_square_size/3, pix_square_size/3))), # start
                         tuple(np.add(center,(-pix_square_size/3, -pix_square_size/3))), # end
-                        5 
+                        LW 
                     )
                     pygame.draw.line( 
                         canvas, 
                         CR, 
                         tuple(np.add(center,(-pix_square_size/3, pix_square_size/3))), # start
                         tuple(np.add(center,(pix_square_size/3, -pix_square_size/3))), # end
-                        5 
+                        LW
                     )
                 elif piece == self.player_O: 
                     pygame.draw.circle(
                         canvas,
                         CI,
                         center,
-                        pix_square_size / 2.85,
+                        pix_square_size / 2.5,
                     )
                     pygame.draw.circle(
                         canvas,
                         BG,
                         center,
-                        pix_square_size / 3,
+                        pix_square_size / 2.5 - LW,
                     )
 
         return canvas
