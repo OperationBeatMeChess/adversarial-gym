@@ -10,6 +10,7 @@ import numpy as np
 from io import BytesIO
 import cairosvg
 from PIL import Image
+import pygame
 
 
 class ChessActionSpace(adversarial.AdversarialActionSpace):
@@ -32,22 +33,26 @@ class ChessActionSpace(adversarial.AdversarialActionSpace):
 
 class ChessEnv(adversarial.AdversarialEnv):
     """Chess Environment"""
-    metadata = {'render.modes': ['rgb_array', 'human']}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_size=512, claim_draw=True, **kwargs):
-        super(ChessEnv, self).__init__()
+    def __init__(self, render_mode=None, render_size=512, claim_draw=True, **kwargs):
         self.board = chess.Board(chess960=False)
 
         self.action_space = ChessActionSpace(self.board)
         self.observation_space = spaces.Tuple(spaces=(
             spaces.Box(low=-6, high=6, shape=(8, 8), dtype=np.int8),
             spaces.Box(low=np.array([False]),
-                       high=np.array([True]), dtype=bool)
+                       high=np.array([True]), dtype=np.bool)
         ))
 
         self.render_size = render_size
         self.claim_draw = claim_draw
-        self.viewer = None
+
+        assert render_mode is None or render_mode in self.metadata["render_modes"]
+        self.render_mode = render_mode
+
+        self.clock = None
+        self.window = None
 
     @property
     def current_player(self):
@@ -68,7 +73,7 @@ class ChessEnv(adversarial.AdversarialEnv):
         self.board = chess.Board(board_string)
         self.action_space = ChessActionSpace(self.board)
 
-    def get_canonical_observaion(self):
+    def _get_canonical_observaion(self):
         state = (self.get_piece_configuration(self.board))
         player = self.current_player
 
@@ -76,8 +81,18 @@ class ChessEnv(adversarial.AdversarialEnv):
         #     state[::-1, ::-1] if player == chess.BLACK else state
 
         canonical_representation = -state if player == chess.BLACK else state
-        canonical_state = (canonical_representation, np.array([player]))
+        canonical_state = canonical_representation, np.array([player], dtype=np.bool)
         return canonical_state
+
+    def _get_info(self):
+        info = {
+            'castling_rights': self.board.castling_rights,
+            'fullmove_number': self.board.fullmove_number,
+            'halfmove_clock': self.board.halfmove_clock,
+            'promoted': self.board.promoted,
+            'ep_square': self.board.ep_square
+        }
+        return info
 
     def game_result(self):
         result = self.board.result()
@@ -103,46 +118,69 @@ class ChessEnv(adversarial.AdversarialEnv):
         move = self.action_to_move(action)
         self.board.push(move)
 
-        observation = self.get_canonical_observaion()
+        observation = self._get_canonical_observaion()
+        info = self._get_info()
 
         result = self.game_result()
         # result is 1 for white win or 0 for black win. slight positive for draw
         reward = 0 if result is None else 1e-4 if result == -1 else 1
-        done = result is not None
-        info = {
-            'castling_rights': self.board.castling_rights,
-            'fullmove_number': self.board.fullmove_number,
-            'halfmove_clock': self.board.halfmove_clock,
-            'promoted': self.board.promoted,
-            'ep_square': self.board.ep_square
-        }
+        terminated = result is not None
 
-        return observation, reward, done, info
+        if self.render_mode == "human":
+            self.render()
 
-    def reset(self):
+        return observation, reward, terminated, False, info
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
         self.board.reset()
-        return self.get_canonical_observaion()
 
-    def render(self, mode='human'):
+        observation = self._get_canonical_observaion()
+        info = self._get_info()
+
+        if self.render_mode == "human":
+            self.render()
+        
+        return observation, info
+
+    def render(self):
+        if self.render_mode == "human":
+            
+            if self.clock is None:
+                self.clock = pygame.time.Clock()
+            if self.window is None:
+                pygame.init()
+                pygame.display.init()
+                self.window = pygame.display.set_mode((self.render_size, self.render_size))
+
+            canvas = self._render_frame()
+            # The following line copies our drawings from `canvas` to the visible window
+            self.window.blit(canvas, canvas.get_rect())
+            pygame.display.update()
+            # We need to ensure that human-rendering occurs at the predefined framerate.
+            # The following line will automatically add a delay to keep the framerate stable.
+            self.clock.tick(self.metadata["render_fps"])
+
+        elif self.render_mode == "rgb_array":
+            return self._get_frame()
+
+    def _render_frame(self):
+        surf = pygame.surfarray.make_surface(self._get_frame())
+        return pygame.transform.rotate(surf, -90)
+
+    def _get_frame(self):
         out = BytesIO()
         bytestring = chess.svg.board(
             self.board, size=self.render_size).encode('utf-8')
         cairosvg.svg2png(bytestring=bytestring, write_to=out)
         image = Image.open(out)
         img = np.asarray(image)
-
-        if mode == 'rgb_array':
-            return img
-        elif mode == 'human':
-            from gym.envs.classic_control import rendering
-            if self.viewer is None:
-                self.viewer = rendering.SimpleImageViewer()
-            self.viewer.imshow(img)
-            return self.viewer.isopen
+        return img   
 
     def close(self):
-        if not self.viewer is None:
-            self.viewer.close()
+        if self.window is not None:
+            pygame.display.quit()
+            pygame.quit()
 
 
     def action_to_move(self, action):

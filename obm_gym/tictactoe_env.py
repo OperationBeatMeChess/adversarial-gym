@@ -4,8 +4,10 @@ from gym import spaces
 import numpy as np
 from abc import ABC, abstractmethod, abstractproperty
 import pickle
+import pygame
+from . import adversarial
 
-class TicTacToeActionSpace(ABC):
+class TicTacToeActionSpace(adversarial.AdversarialActionSpace):
 
     def __init__(self, env):
         self.env = env
@@ -39,8 +41,9 @@ class TicTacToeActionSpace(ABC):
   
 class TicTacToeEnv(gym.Env):
     """Abstract TicTacToe Environment"""
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, size=3):
+    def __init__(self, render_mode=None, render_size=512, size=3):
         "Set up initial board configuration."
 
         self.player_X = 1
@@ -48,14 +51,21 @@ class TicTacToeEnv(gym.Env):
         self.draw = 0
         
         self.size = size
+        self.render_size = render_size
         self.reset()
 
         self.action_space = TicTacToeActionSpace(self)
         self.observation_space = spaces.Tuple(spaces=(
-            spaces.Box(low=-1, high=1, shape=(self.size, self.size), dtype=np.int8),
-            spaces.Box(low=np.array([False]),
-                       high=np.array([True]), dtype=bool)
+            spaces.Box(low=self.player_O, high=self.player_X, shape=(self.size, self.size), dtype=np.int8),
+            spaces.Box(low=np.array([self.player_O]),
+                       high=np.array([self.player_X]), dtype=np.int8)
         ))
+
+        assert render_mode is None or render_mode in self.metadata["render_modes"]
+        self.render_mode = render_mode
+
+        self.clock = None
+        self.window = None
 
     @property
     def current_player(self):
@@ -99,7 +109,7 @@ class TicTacToeEnv(gym.Env):
         # self.action_space = TicTacToeActionSpace(self)
         self.board, self._current_player, self.size = pickle.loads(board_string)
 
-    def get_canonical_observaion(self):
+    def _get_canonical_observaion(self):
         """
         Returns:
             canonicalState: returns canonical form of board. The canonical form
@@ -109,7 +119,10 @@ class TicTacToeEnv(gym.Env):
                             board as is. When the player is black, we can invert
                             the colors and return the board.
         """
-        return self.board * self.current_player
+        return self.board * self.current_player, np.array([self.current_player], dtype=np.int8)
+
+    def _get_info(self):
+        return {}
 
     def game_result(self):
         """
@@ -145,47 +158,120 @@ class TicTacToeEnv(gym.Env):
         self.board[unraveled_action] = self.current_player
         self._current_player = -self.current_player
 
-        observation = self.get_canonical_observaion()
+        observation = self._get_canonical_observaion()
+        info = self._get_info()
+
         result = self.game_result()
         reward = 0 if result is None else 1e-4 if result == 0 else 1
-        done = result is not None
-        info = {}
+        terminated = result is not None
 
-        return observation, reward, done, info
+        if self.render_mode == "human":
+            self.render()
 
-    def reset(self):
+        return observation, reward, terminated, False, info
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
         self.board = np.zeros((self.size, self.size), dtype=np.int8)
         self._current_player = self.player_X
-        return self.get_canonical_observaion()
 
-    def render(self, mode='human'):
+        observation = self._get_canonical_observaion()
+        info = self._get_info()
 
-        if mode == 'human':
-            print("   ", end="")
+        if self.render_mode == "human":
+            self.render()
+        
+        return observation, info
+        
+    def render(self):
+        if self.render_mode == "human":
+            
+            if self.clock is None:
+                self.clock = pygame.time.Clock()
+            if self.window is None:
+                pygame.init()
+                pygame.display.init()
+                self.window = pygame.display.set_mode((self.render_size, self.render_size))
+
+            canvas = self._render_frame()
+            # The following line copies our drawings from `canvas` to the visible window
+            self.window.blit(canvas, canvas.get_rect())
+            pygame.display.update()
+            # We need to ensure that human-rendering occurs at the predefined framerate.
+            # The following line will automatically add a delay to keep the framerate stable.
+            self.clock.tick(self.metadata["render_fps"])
+
+        elif self.render_mode == "rgb_array":
+            return self._get_frame()
+
+    def _render_frame(self):
+
+        canvas = pygame.Surface((self.render_size, self.render_size))
+        BG = (210, 180, 140)
+        CR = (255, 204, 203)
+        CI = (144, 238, 144)
+        LI = (35, 31, 32)
+        canvas.fill(BG)
+        pix_square_size = (
+            self.render_size / self.size
+        )  # The size of a single grid square in pixels
+        for x in range(self.size + 1):
+            pygame.draw.line(
+                canvas,
+                LI,
+                (0, pix_square_size * x),
+                (self.render_size, pix_square_size * x),
+                width=3,
+            )
+            pygame.draw.line(
+                canvas,
+                LI,
+                (pix_square_size * x, 0),
+                (pix_square_size * x, self.render_size),
+                width=3,
+            )
+        for x in range(self.size):
             for y in range(self.size):
-                print (y,"", end="")
-            print("")
-            print("  ", end="")
-            for _ in range(self.size):
-                print ("-", end="-")
-            print("--")
-            for x in range(self.size):
-                print(x, "|",end="")    # print the row #
-                for y in range(self.size):
-                    piece = self.board[x, y]    # get the piece to print
-                    if piece == self.player_X: print("X ",end="")
-                    elif piece == self.player_O: print("O ",end="")
-                    else:
-                        if y==self.size:
-                            print("-",end="")
-                        else:
-                            print("- ",end="")
-                print("|")
+                piece = self.board[x, y]
+                center = (pix_square_size * (0.5 + x), pix_square_size * (0.5 + y))
+                if piece == self.player_X: 
+                    pygame.draw.line( 
+                        canvas, 
+                        CR, 
+                        tuple(np.add(center,(pix_square_size/3, pix_square_size/3))), # start
+                        tuple(np.add(center,(-pix_square_size/3, -pix_square_size/3))), # end
+                        5 
+                    )
+                    pygame.draw.line( 
+                        canvas, 
+                        CR, 
+                        tuple(np.add(center,(-pix_square_size/3, pix_square_size/3))), # start
+                        tuple(np.add(center,(pix_square_size/3, -pix_square_size/3))), # end
+                        5 
+                    )
+                elif piece == self.player_O: 
+                    pygame.draw.circle(
+                        canvas,
+                        CI,
+                        center,
+                        pix_square_size / 2.85,
+                    )
+                    pygame.draw.circle(
+                        canvas,
+                        BG,
+                        center,
+                        pix_square_size / 3,
+                    )
 
-            print("  ", end="")
-            for _ in range(self.size):
-                print ("-", end="-")
-            print("--")
+        return canvas
+
+    def _get_frame(self):
+        canvas = self._render_frame()
+        return np.transpose(
+                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
+            ) 
 
     def close(self):
-        pass
+        if self.window is not None:
+            pygame.display.quit()
+            pygame.quit()

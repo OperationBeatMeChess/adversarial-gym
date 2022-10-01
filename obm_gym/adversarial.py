@@ -4,7 +4,7 @@ from gym import spaces
 import numpy as np
 from abc import ABC, abstractmethod, abstractproperty
 
-class AdversarialActionSpace(ABC):
+class AdversarialActionSpace(gym.spaces.Space):
 
     @abstractmethod
     def sample(self):
@@ -99,12 +99,11 @@ class AdversarialEnv(gym.Env):
         """
         pass
 
-    @abstractmethod
-    def step(self, action):
-        pass
+    def reset(self, seed=None):
+        super().reset(seed=seed)
 
     @abstractmethod
-    def reset(self):
+    def step(self, action):
         pass
 
     @abstractmethod
