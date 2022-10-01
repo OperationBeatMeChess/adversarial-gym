@@ -1,1 +1,1 @@
-# obm-gym
+# adversarial-gym
