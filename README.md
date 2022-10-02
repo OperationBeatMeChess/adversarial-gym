@@ -180,8 +180,7 @@ class AdversarialEnv(gym.Env):
         return observation, info
         
     def render(self):
-        if self.render_mode == "human":
-            
+        if self.render_mode == "human" and not self.skip_next_render:
             if self.clock is None:
                 self.clock = pygame.time.Clock()
             if self.window is None:
@@ -200,7 +199,7 @@ class AdversarialEnv(gym.Env):
         elif self.render_mode == "rgb_array":
             return self._get_img()
 
-
+        self.skip_next_render = False
 ```
 
 The major differences between a standard gym environment and the adversarial environment is the adversarial environment keeps track of both the game state and each players state. In other words we must know which player is currently making a move and the state which corresponds with this player. Additionally this must be expressed in the result of the game. 
