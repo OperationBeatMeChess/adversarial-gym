@@ -37,7 +37,7 @@ class ChessEnv(adversarial.AdversarialEnv):
         self.observation_space = spaces.Tuple(spaces=(
             spaces.Box(low=-6, high=6, shape=(8, 8), dtype=np.int8),
             spaces.Box(low=np.array([False]),
-                       high=np.array([True]), dtype=np.bool)
+                       high=np.array([True]), dtype=bool)
         ))
 
         self.render_size = render_size
@@ -77,7 +77,7 @@ class ChessEnv(adversarial.AdversarialEnv):
         #     state[::-1, ::-1] if player == chess.BLACK else state
 
         canonical_representation = -state if player == chess.BLACK else state
-        return canonical_representation, np.array([player], dtype=np.bool)
+        return canonical_representation, np.array([player], dtype=bool)
 
     def _get_info(self):
         info = {
@@ -101,7 +101,8 @@ class ChessEnv(adversarial.AdversarialEnv):
         winner = (chess.WHITE if result == '1-0' else chess.BLACK if result ==
                 '0-1' else -1 if result == '1/2-1/2' else None)
         # result is 1 for white win or 0 for black win. slight positive for draw
-        reward = 0 if result is None else 1e-4 if result == -1 else 1
+        # reward = 0 if result is None else 1e-4 if result == -1 else 1
+        reward = 1 if winner == chess.WHITE else -1 if winner == chess.BLACK else 0
         return winner, reward
 
     def _get_frame(self):
@@ -115,6 +116,7 @@ class ChessEnv(adversarial.AdversarialEnv):
             self.board, size=self.render_size).encode('utf-8')
         cairosvg.svg2png(bytestring=bytestring, write_to=out)
         image = Image.open(out)
+        image = image.convert('RGB')
         img = np.asarray(image)
         return img   
 
