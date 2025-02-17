@@ -1,3 +1,4 @@
+from functools import lru_cache
 import gym
 from gym import spaces
 from . import adversarial
@@ -139,6 +140,7 @@ class ChessEnv(adversarial.AdversarialEnv):
 
         self.board.set_piece_map(piece_map)
 
+    @lru_cache(maxsize=4672)
     def action_to_move(self, action):
         unraveled_action = np.unravel_index(action, (64, 73))
         from_square = unraveled_action[0]
@@ -160,6 +162,7 @@ class ChessEnv(adversarial.AdversarialEnv):
         return move
 
     @staticmethod
+    @lru_cache(maxsize=4672)
     def move_to_action(move):
         from_square = move.from_square
         to_square = move.to_square
