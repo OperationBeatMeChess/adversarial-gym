@@ -74,9 +74,6 @@ class ChessEnv(adversarial.AdversarialEnv):
         state = (self.get_piece_configuration(self.board))
         player = self.current_player
 
-        # canonical_representation = - \
-        #     state[::-1, ::-1] if player == chess.BLACK else state
-
         canonical_representation = -state if player == chess.BLACK else state
         return canonical_representation, np.array([player], dtype=bool)
 
@@ -98,11 +95,9 @@ class ChessEnv(adversarial.AdversarialEnv):
         self.board.reset()
 
     def _game_result(self):
-        result = self.board.result()
+        result = self.board.result(claim_draw=self.claim_draw)
         winner = (chess.WHITE if result == '1-0' else chess.BLACK if result ==
                 '0-1' else -1 if result == '1/2-1/2' else None)
-        # result is 1 for white win or 0 for black win. slight positive for draw
-        # reward = 0 if result is None else 1e-4 if result == -1 else 1
         reward = 1 if winner == chess.WHITE else -1 if winner == chess.BLACK else 0
         return winner, reward
 
